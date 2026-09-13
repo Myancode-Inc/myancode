@@ -2409,7 +2409,11 @@
                 const block = getEditorBlock(selection.anchorNode);
                 if (!block || block.tagName !== 'PRE') return;
                 const range = selection.getRangeAt(0);
-                const atEnd = range.collapsed && range.endContainer === block.lastChild && range.endOffset === (block.lastChild?.textContent || '').length;
+                const endRange = document.createRange();
+                endRange.selectNodeContents(block);
+                endRange.collapse(false);
+                const trailingNodes = range.endContainer === block ? Array.from(block.childNodes).slice(range.endOffset) : [];
+                const atEnd = range.collapsed && (range.compareBoundaryPoints(Range.END_TO_END, endRange) === 0 || (range.endContainer === block && trailingNodes.every(node => node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR')));
                 if (atEnd && !event.shiftKey) {
                     event.preventDefault();
                     const next = document.createElement('div');
