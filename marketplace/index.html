@@ -3526,6 +3526,7 @@
         
         function initRealtime() {
             if (!supabaseInstance) return;
+            
             if (realtimeChannel) return; 
             
             realtimeChannel = supabaseInstance.channel('public_marketplace');
@@ -3539,7 +3540,16 @@
                     const modal = document.getElementById('postDetailModal');
                     if (modal && !modal.classList.contains('hidden')) document.querySelectorAll('[id^="modal-comments-tree-"]').forEach(node => { loadCommentsForModalSilently(node.id.replace('modal-comments-tree-', '')); });
                     document.querySelectorAll('[id^="comments-inline-"]').forEach(node => { if (!node.classList.contains('hidden')) { const postId = node.id.replace('comments-inline-', ''); loadCommentsForFeedSilently(postId); } });
-                }).subscribe();
+                })
+                .subscribe(async (status) => {
+                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                        console.warn('Realtime WebSockets are blocked by your proxy. Live updates disabled to prevent console spam.');
+                        if (supabaseInstance) {
+                            await supabaseInstance.removeAllChannels(); 
+                            realtimeChannel = null;
+                        }
+                    }
+                });
         }
 
         async function fetchPostsSilently() {
