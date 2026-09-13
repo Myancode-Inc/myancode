@@ -2391,12 +2391,43 @@
             updateCodeToggleUI(true);
             editor.focus();
         }
+        function placeCaretAtEnd(element) {
+            if (!element) return;
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            element.focus();
+        }
+        function setupEditorCodeBreaks(editor) {
+            editor.addEventListener('keydown', event => {
+                if (event.key !== 'Enter') return;
+                const selection = window.getSelection();
+                if (!selection || !selection.rangeCount) return;
+                const block = getEditorBlock(selection.anchorNode);
+                if (!block || block.tagName !== 'PRE') return;
+                const range = selection.getRangeAt(0);
+                const atEnd = range.collapsed && range.endContainer === block.lastChild && range.endOffset === (block.lastChild?.textContent || '').length;
+                if (atEnd && !event.shiftKey) {
+                    event.preventDefault();
+                    const next = document.createElement('div');
+                    next.innerHTML = '<br>';
+                    block.parentNode.insertBefore(next, block.nextSibling);
+                    placeCaretAtEnd(next);
+                    updateCodeToggleUI(false);
+                    return;
+                }
+                event.preventDefault();
+                document.execCommand('insertText', false, '\n');
+            });
+        }
         function setupPostEditorLimits() {
             const editor = document.getElementById('postEditor');
             if(editor) {
+                setupEditorCodeBreaks(editor);
                 editor.addEventListener('input', function() {
-                    clearTimeout(window.composerAutoFormatTimer);
-                    window.composerAutoFormatTimer = setTimeout(() => autoFormatComposerBlocks(this), 650);
                     const text = this.innerText || '';
                     const letters = text.length;
                     const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
@@ -2438,9 +2469,6 @@
                             }
                         }
                     }
-                });
-                editor.addEventListener('paste', function() {
-                    setTimeout(() => autoFormatComposerBlocks(this), 20);
                 });
             }
         }
@@ -3506,6 +3534,13 @@
                     const modal = document.getElementById('postDetailModal');
                     if (modal && !modal.classList.contains('hidden')) document.querySelectorAll('[id^="modal-comments-tree-"]').forEach(node => { loadCommentsForModalSilently(node.id.replace('modal-comments-tree-', '')); });
                     document.querySelectorAll('[id^="comments-inline-"]').forEach(node => { if (!node.classList.contains('hidden')) { const postId = node.id.replace('comments-inline-', ''); loadCommentsForFeedSilently(postId); } });
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_comment_likes' }, payload => {
+                    const postId = payload.new?.post_id || payload.old?.post_id;
+                    if (postId) {
+                        loadCommentsForModalSilently(postId);
+                        loadCommentsForFeedSilently(postId);
+                    }
                 }).subscribe();
         }
 
@@ -3536,7 +3571,7 @@
         async function loadCommentsForModalSilently(postId) {
             if (!supabaseInstance) return;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
                 window.currentPostComments = data; const treeContainer = document.getElementById(`modal-comments-tree-${postId}`);
                 if (treeContainer) { if (data.length === 0) treeContainer.innerHTML = `<p class="text-sm text-gray-500 text-center py-10">No comments yet.</p>`; else { treeContainer.innerHTML = renderCommentTree(window.currentPostComments, postId); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
             } catch (e) { }
@@ -3545,7 +3580,7 @@
         async function loadCommentsForFeedSilently(postId) {
             if (!supabaseInstance) return;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
                 window.inlineCommentsCache[postId] = data; const treeContainer = document.getElementById(`inline-comments-tree-${postId}`);
                 if (treeContainer) { if (data.length === 0) treeContainer.innerHTML = `<p class="text-xs text-gray-500 text-center py-2">No comments yet.</p>`; else { treeContainer.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
             } catch (e) { }
@@ -3737,7 +3772,20 @@
             }
         }
         function formatDoc(cmd, value = null) { document.execCommand(cmd, false, value); document.getElementById('postEditor').focus(); }
-        async function addLink() { const url = await customPrompt('Enter link URL:', 'https://...', 'Add Link'); if (url) formatDoc('createLink', url); }
+        async function addLink() {
+            const editor = document.getElementById('postEditor');
+            const urlInput = await customPrompt('Enter link URL:', 'https://...', 'Add Link');
+            if (!urlInput) return;
+            const url = /^(https?:|mailto:)/i.test(urlInput) ? urlInput : `https://${urlInput}`;
+            editor.focus();
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount && getEditorElement(selection.anchorNode) && !selection.getRangeAt(0).collapsed) {
+                document.execCommand('createLink', false, url);
+            } else {
+                document.execCommand('insertHTML', false, `<a href="${escapePostCode(url)}" target="_blank" rel="noopener noreferrer">${escapePostCode(url)}</a>`);
+            }
+            editor.focus();
+        }
         
         function handleImageSelection(e) {
             const files = Array.from(e.target.files);
@@ -4277,7 +4325,7 @@
             if (isLiked) { btnEl.classList.remove('text-[#ff3b30]'); btnEl.classList.add('text-gray-400', 'hover:text-white'); if (iconEl) iconEl.classList.remove('fill-current'); post.marketplace_likes.splice(idx, 1); }
             else { btnEl.classList.add('text-[#ff3b30]'); btnEl.classList.remove('text-gray-400', 'hover:text-white'); if (iconEl) iconEl.classList.add('fill-current'); post.marketplace_likes.push({ user_id: currentUser.id }); }
             labelEl.innerText = post.marketplace_likes.length;
-            try { if (isLiked) await supabaseInstance.from('marketplace_likes').delete().match({ post_id: postId, user_id: currentUser.id }); else await supabaseInstance.from('marketplace_likes').insert([{ post_id: postId, user_id: currentUser.id }]); } catch (e) { }
+            try { const result = isLiked ? await supabaseInstance.from('marketplace_likes').delete().match({ post_id: postId, user_id: currentUser.id }) : await supabaseInstance.from('marketplace_likes').insert([{ post_id: postId, user_id: currentUser.id }]); if (result.error) throw result.error; } catch (e) { showErrorToast('Could not save your reaction.'); }
         }
 
         async function toggleSavePost(postId, btnEl) {
@@ -4364,7 +4412,7 @@
 
         async function reportPost(postId) {
             if (!currentUser) { showErrorToast("Please login."); return; } const r = await customPrompt("Reason for reporting:", "Spam, inappropriate...", "Report"); if (!r) return;
-            try { await supabaseInstance.from('marketplace_reports').insert([{ post_id: postId, reporter_id: currentUser.id, reason: r }]); showToast("Report submitted."); } catch (e) {}
+            try { const { error } = await supabaseInstance.from('marketplace_reports').insert([{ post_id: postId, reporter_id: currentUser.id, reason: r }]); if (error) throw error; showToast("Report submitted."); } catch (e) { showErrorToast('Failed to submit report.'); }
         }
 
         function openPostDetail(postId) {
@@ -4382,7 +4430,7 @@
             const treeEl = document.getElementById(`inline-comments-tree-${postId}`);
             if (!silent) treeEl.innerHTML = `<div class="py-4 text-center"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-gray-500 mx-auto"></i></div>`;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error;
                 window.inlineCommentsCache[postId] = data;
                 if (data.length === 0) { treeEl.innerHTML = `<p class="text-xs text-gray-500 text-center py-2 uppercase font-bold tracking-widest">No comments yet.</p>`; return; }
                 treeEl.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -4399,7 +4447,7 @@
         async function loadCommentsForModal(postId) {
             const tree = document.getElementById(`modal-comments-tree-${postId}`); tree.innerHTML = `<div class="py-10 text-center"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-gray-500 mx-auto"></i></div>`;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error; window.currentPostComments = data;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error; window.currentPostComments = data;
                 if (data.length === 0) { tree.innerHTML = `<p class="text-xs text-gray-500 text-center py-10 uppercase font-bold tracking-widest">No comments yet.</p>`; return; }
                 tree.innerHTML = renderCommentTree(window.currentPostComments, postId, false); if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (e) { tree.innerHTML = `<p class="text-sm text-red-400 text-center py-10">Failed to load comments.</p>`; }
@@ -4456,11 +4504,18 @@
         async function toggleLikeComment(commentId, btnEl, postId, isInline = false) {
             if (!currentUser) { showErrorToast("Please login."); return; }
             const iconEl = btnEl.querySelector('svg') || btnEl.querySelector('i'); const labelEl = btnEl.querySelector('.cmt-like-label'); const isLiked = btnEl.classList.contains('text-[#ff3b30]'); let count = parseInt(labelEl.innerText) || 0;
-            if (isLiked) { btnEl.classList.remove('text-[#ff3b30]'); btnEl.classList.add('hover:text-white'); if (iconEl) iconEl.classList.remove('fill-current'); labelEl.innerText = count - 1 > 0 ? count - 1 : ''; }
-            else { btnEl.classList.add('text-[#ff3b30]'); btnEl.classList.remove('hover:text-white'); if (iconEl) iconEl.classList.add('fill-current'); labelEl.innerText = count + 1; }
-            const updateLocalState = (commentsArray) => { if (commentsArray) { const cIdx = commentsArray.findIndex(c => c.id === commentId); if (cIdx > -1) { if (!commentsArray[cIdx].marketplace_comment_likes) commentsArray[cIdx].marketplace_comment_likes = []; if (isLiked) commentsArray[cIdx].marketplace_comment_likes = commentsArray[cIdx].marketplace_comment_likes.filter(l => l.user_id !== currentUser.id); else commentsArray[cIdx].marketplace_comment_likes.push({ user_id: currentUser.id }); } } };
-            if (isInline && window.inlineCommentsCache[postId]) updateLocalState(window.inlineCommentsCache[postId]); if (!isInline && window.currentPostComments) updateLocalState(window.currentPostComments);
-            try { if (isLiked) await supabaseInstance.from('marketplace_comment_likes').delete().match({ comment_id: commentId, user_id: currentUser.id }); else await supabaseInstance.from('marketplace_comment_likes').insert([{ comment_id: commentId, user_id: currentUser.id }]); } catch (e) { }
+            const updateLocalState = (commentsArray, liked) => { if (commentsArray) { const cIdx = commentsArray.findIndex(c => c.id === commentId); if (cIdx > -1) { if (!commentsArray[cIdx].marketplace_comment_likes) commentsArray[cIdx].marketplace_comment_likes = []; commentsArray[cIdx].marketplace_comment_likes = liked ? [...commentsArray[cIdx].marketplace_comment_likes.filter(l => l.user_id !== currentUser.id), { user_id: currentUser.id }] : commentsArray[cIdx].marketplace_comment_likes.filter(l => l.user_id !== currentUser.id); } } };
+            const setButtonState = liked => { btnEl.classList.toggle('text-[#ff3b30]', liked); btnEl.classList.toggle('hover:text-white', !liked); if (iconEl) iconEl.classList.toggle('fill-current', liked); labelEl.innerText = liked ? count + (isLiked ? 0 : 1) : Math.max(0, count - (isLiked ? 1 : 0)) || ''; };
+            setButtonState(!isLiked);
+            updateLocalState(isInline ? window.inlineCommentsCache[postId] : window.currentPostComments, !isLiked);
+            try {
+                const result = isLiked ? await supabaseInstance.from('marketplace_comment_likes').delete().match({ comment_id: commentId, user_id: currentUser.id }) : await supabaseInstance.from('marketplace_comment_likes').insert([{ comment_id: commentId, user_id: currentUser.id }]);
+                if (result.error) throw result.error;
+            } catch (e) {
+                setButtonState(isLiked);
+                updateLocalState(isInline ? window.inlineCommentsCache[postId] : window.currentPostComments, isLiked);
+                showErrorToast('Could not save your reaction.');
+            }
         }
 
         async function postComment(postId, isModal = false) {
@@ -4504,8 +4559,13 @@
             }
             const post = allCommunityPosts.find(p => p.id === postId);
             if (post && post.marketplace_comments && post.marketplace_comments[0].count > 0) { post.marketplace_comments[0].count--; const l1 = document.getElementById(`comment-count-label-${postId}`); const l2 = document.getElementById(`modal-comment-count-label-${postId}`); if (l1) l1.innerText = post.marketplace_comments[0].count; if (l2) l2.innerText = post.marketplace_comments[0].count; }
-            try { await supabaseInstance.from('marketplace_comments').delete().eq('id', commentId); } 
-            catch (e) { 
+            try {
+                const { error } = await supabaseInstance.from('marketplace_comments').delete().eq('id', commentId).eq('user_id', currentUser.id);
+                if (error) throw error;
+                showToast('Comment deleted.');
+            }
+            catch (e) {
+                showErrorToast('Failed to delete comment.'); 
                 if (!isInline && window.currentPostComments) { window.currentPostComments = backup; document.getElementById(`modal-comments-tree-${postId}`).innerHTML = renderCommentTree(window.currentPostComments, postId, false); if (typeof lucide !== 'undefined') lucide.createIcons(); } 
                 else if (isInline && window.inlineCommentsCache[postId]) { window.inlineCommentsCache[postId] = backup; const treeContainer = document.getElementById(`inline-comments-tree-${postId}`); if(treeContainer) { treeContainer.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
             }
