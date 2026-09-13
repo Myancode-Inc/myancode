@@ -2391,46 +2391,9 @@
             updateCodeToggleUI(true);
             editor.focus();
         }
-        function placeCaretAtEnd(element) {
-            if (!element) return;
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(element);
-            range.collapse(false);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            element.focus();
-        }
-        function setupEditorCodeBreaks(editor) {
-            editor.addEventListener('keydown', event => {
-                if (event.key !== 'Enter') return;
-                const selection = window.getSelection();
-                if (!selection || !selection.rangeCount) return;
-                const block = getEditorBlock(selection.anchorNode);
-                if (!block || block.tagName !== 'PRE') return;
-                const range = selection.getRangeAt(0);
-                const endRange = document.createRange();
-                endRange.selectNodeContents(block);
-                endRange.collapse(false);
-                const trailingNodes = range.endContainer === block ? Array.from(block.childNodes).slice(range.endOffset) : [];
-                const atEnd = range.collapsed && (range.compareBoundaryPoints(Range.END_TO_END, endRange) === 0 || (range.endContainer === block && trailingNodes.every(node => node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR')));
-                if (atEnd && !event.shiftKey) {
-                    event.preventDefault();
-                    const next = document.createElement('div');
-                    next.innerHTML = '<br>';
-                    block.parentNode.insertBefore(next, block.nextSibling);
-                    placeCaretAtEnd(next);
-                    updateCodeToggleUI(false);
-                    return;
-                }
-                event.preventDefault();
-                document.execCommand('insertText', false, '\n');
-            });
-        }
         function setupPostEditorLimits() {
             const editor = document.getElementById('postEditor');
             if(editor) {
-                setupEditorCodeBreaks(editor);
                 editor.addEventListener('input', function() {
                     const text = this.innerText || '';
                     const letters = text.length;
@@ -2473,6 +2436,27 @@
                             }
                         }
                     }
+                });
+                editor.addEventListener('keydown', function(event) {
+                    if (event.key !== 'Enter' || event.shiftKey) return;
+                    const block = getEditorBlock(window.getSelection()?.anchorNode);
+                    if (!block || block.tagName !== 'PRE' || !this.contains(block)) return;
+                    const selection = window.getSelection();
+                    if (!selection || !selection.rangeCount) return;
+                    const range = selection.getRangeAt(0);
+                    const lastChild = block.lastChild;
+                    const atEnd = range.collapsed && lastChild && range.endContainer === lastChild && range.endOffset === lastChild.textContent.length;
+                    if (!atEnd) return;
+                    event.preventDefault();
+                    const paragraph = document.createElement('div');
+                    paragraph.appendChild(document.createElement('br'));
+                    block.after(paragraph);
+                    const nextRange = document.createRange();
+                    nextRange.setStart(paragraph, 0);
+                    nextRange.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(nextRange);
+                    this.focus();
                 });
             }
         }
@@ -3538,13 +3522,6 @@
                     const modal = document.getElementById('postDetailModal');
                     if (modal && !modal.classList.contains('hidden')) document.querySelectorAll('[id^="modal-comments-tree-"]').forEach(node => { loadCommentsForModalSilently(node.id.replace('modal-comments-tree-', '')); });
                     document.querySelectorAll('[id^="comments-inline-"]').forEach(node => { if (!node.classList.contains('hidden')) { const postId = node.id.replace('comments-inline-', ''); loadCommentsForFeedSilently(postId); } });
-                })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_comment_likes' }, payload => {
-                    const postId = payload.new?.post_id || payload.old?.post_id;
-                    if (postId) {
-                        loadCommentsForModalSilently(postId);
-                        loadCommentsForFeedSilently(postId);
-                    }
                 }).subscribe();
         }
 
@@ -3584,7 +3561,7 @@
         async function loadCommentsForFeedSilently(postId) {
             if (!supabaseInstance) return;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
                 window.inlineCommentsCache[postId] = data; const treeContainer = document.getElementById(`inline-comments-tree-${postId}`);
                 if (treeContainer) { if (data.length === 0) treeContainer.innerHTML = `<p class="text-xs text-gray-500 text-center py-2">No comments yet.</p>`; else { treeContainer.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
             } catch (e) { }
@@ -3775,19 +3752,20 @@
                 showToast('Copy failed, select the code manually.');
             }
         }
-        function formatDoc(cmd, value = null) { document.execCommand(cmd, false, value); document.getElementById('postEditor').focus(); }
+        function formatDoc(cmd, value = null) { const editor = document.getElementById('postEditor'); if (!editor) return; editor.focus(); document.execCommand(cmd, false, value); editor.focus(); }
         async function addLink() {
             const editor = document.getElementById('postEditor');
-            const urlInput = await customPrompt('Enter link URL:', 'https://...', 'Add Link');
-            if (!urlInput) return;
-            const url = /^(https?:|mailto:)/i.test(urlInput) ? urlInput : `https://${urlInput}`;
-            editor.focus();
+            if (!editor) return;
             const selection = window.getSelection();
-            if (selection && selection.rangeCount && getEditorElement(selection.anchorNode) && !selection.getRangeAt(0).collapsed) {
-                document.execCommand('createLink', false, url);
-            } else {
-                document.execCommand('insertHTML', false, `<a href="${escapePostCode(url)}" target="_blank" rel="noopener noreferrer">${escapePostCode(url)}</a>`);
-            }
+            const savedRange = selection && selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+            const url = await customPrompt('Enter link URL:', 'https://...', 'Add Link');
+            if (!url || !/^(https?:\/\/|mailto:|tel:)/i.test(url)) { if (url) showErrorToast('Enter a valid link URL.'); return; }
+            editor.focus();
+            const activeSelection = window.getSelection();
+            activeSelection.removeAllRanges();
+            if (savedRange && editor.contains(savedRange.commonAncestorContainer)) activeSelection.addRange(savedRange);
+            document.execCommand('createLink', false, url);
+            editor.querySelectorAll('a[href]').forEach(link => { link.target = '_blank'; link.rel = 'noopener noreferrer'; });
             editor.focus();
         }
         
@@ -3922,7 +3900,7 @@
                 };
 
                 if (isEditingPost) {
-                    const { error } = await supabaseInstance.from('marketplace_posts').update(postData).eq('id', editingPostId);
+                    const { error } = await supabaseInstance.from('marketplace_posts').update(postData).eq('id', editingPostId).eq('user_id', currentUser.id);
                     if (error) throw error;
                     showToast("Updated successfully!");
                     cancelEdit();
@@ -4329,7 +4307,7 @@
             if (isLiked) { btnEl.classList.remove('text-[#ff3b30]'); btnEl.classList.add('text-gray-400', 'hover:text-white'); if (iconEl) iconEl.classList.remove('fill-current'); post.marketplace_likes.splice(idx, 1); }
             else { btnEl.classList.add('text-[#ff3b30]'); btnEl.classList.remove('text-gray-400', 'hover:text-white'); if (iconEl) iconEl.classList.add('fill-current'); post.marketplace_likes.push({ user_id: currentUser.id }); }
             labelEl.innerText = post.marketplace_likes.length;
-            try { const result = isLiked ? await supabaseInstance.from('marketplace_likes').delete().match({ post_id: postId, user_id: currentUser.id }) : await supabaseInstance.from('marketplace_likes').insert([{ post_id: postId, user_id: currentUser.id }]); if (result.error) throw result.error; } catch (e) { showErrorToast('Could not save your reaction.'); }
+            try { if (isLiked) await supabaseInstance.from('marketplace_likes').delete().match({ post_id: postId, user_id: currentUser.id }); else await supabaseInstance.from('marketplace_likes').insert([{ post_id: postId, user_id: currentUser.id }]); } catch (e) { }
         }
 
         async function toggleSavePost(postId, btnEl) {
@@ -4403,7 +4381,7 @@
         async function deletePost(postId) {
             const confirmed = await customConfirm("Delete this post?", "Delete Post"); if (!confirmed) return;
             try { 
-                const { error } = await supabaseInstance.from('marketplace_posts').delete().eq('id', postId); 
+                const { error } = await supabaseInstance.from('marketplace_posts').delete().eq('id', postId).eq('user_id', currentUser.id); 
                 if (error) throw error;
                 showToast("Deleted."); 
                 allCommunityPosts = allCommunityPosts.filter(p => p.id !== postId); 
@@ -4416,7 +4394,7 @@
 
         async function reportPost(postId) {
             if (!currentUser) { showErrorToast("Please login."); return; } const r = await customPrompt("Reason for reporting:", "Spam, inappropriate...", "Report"); if (!r) return;
-            try { const { error } = await supabaseInstance.from('marketplace_reports').insert([{ post_id: postId, reporter_id: currentUser.id, reason: r }]); if (error) throw error; showToast("Report submitted."); } catch (e) { showErrorToast('Failed to submit report.'); }
+            try { const { error } = await supabaseInstance.from('marketplace_reports').insert([{ post_id: postId, reporter_id: currentUser.id, reason: r }]); if (error) throw error; showToast("Report submitted."); } catch (e) { showErrorToast("Failed to submit report."); }
         }
 
         function openPostDetail(postId) {
@@ -4451,7 +4429,7 @@
         async function loadCommentsForModal(postId) {
             const tree = document.getElementById(`modal-comments-tree-${postId}`); tree.innerHTML = `<div class="py-10 text-center"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-gray-500 mx-auto"></i></div>`;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error; window.currentPostComments = data;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error; window.currentPostComments = data;
                 if (data.length === 0) { tree.innerHTML = `<p class="text-xs text-gray-500 text-center py-10 uppercase font-bold tracking-widest">No comments yet.</p>`; return; }
                 tree.innerHTML = renderCommentTree(window.currentPostComments, postId, false); if (typeof lucide !== 'undefined') lucide.createIcons();
             } catch (e) { tree.innerHTML = `<p class="text-sm text-red-400 text-center py-10">Failed to load comments.</p>`; }
@@ -4508,18 +4486,11 @@
         async function toggleLikeComment(commentId, btnEl, postId, isInline = false) {
             if (!currentUser) { showErrorToast("Please login."); return; }
             const iconEl = btnEl.querySelector('svg') || btnEl.querySelector('i'); const labelEl = btnEl.querySelector('.cmt-like-label'); const isLiked = btnEl.classList.contains('text-[#ff3b30]'); let count = parseInt(labelEl.innerText) || 0;
-            const updateLocalState = (commentsArray, liked) => { if (commentsArray) { const cIdx = commentsArray.findIndex(c => c.id === commentId); if (cIdx > -1) { if (!commentsArray[cIdx].marketplace_comment_likes) commentsArray[cIdx].marketplace_comment_likes = []; commentsArray[cIdx].marketplace_comment_likes = liked ? [...commentsArray[cIdx].marketplace_comment_likes.filter(l => l.user_id !== currentUser.id), { user_id: currentUser.id }] : commentsArray[cIdx].marketplace_comment_likes.filter(l => l.user_id !== currentUser.id); } } };
-            const setButtonState = liked => { btnEl.classList.toggle('text-[#ff3b30]', liked); btnEl.classList.toggle('hover:text-white', !liked); if (iconEl) iconEl.classList.toggle('fill-current', liked); labelEl.innerText = liked ? count + (isLiked ? 0 : 1) : Math.max(0, count - (isLiked ? 1 : 0)) || ''; };
-            setButtonState(!isLiked);
-            updateLocalState(isInline ? window.inlineCommentsCache[postId] : window.currentPostComments, !isLiked);
-            try {
-                const result = isLiked ? await supabaseInstance.from('marketplace_comment_likes').delete().match({ comment_id: commentId, user_id: currentUser.id }) : await supabaseInstance.from('marketplace_comment_likes').insert([{ comment_id: commentId, user_id: currentUser.id }]);
-                if (result.error) throw result.error;
-            } catch (e) {
-                setButtonState(isLiked);
-                updateLocalState(isInline ? window.inlineCommentsCache[postId] : window.currentPostComments, isLiked);
-                showErrorToast('Could not save your reaction.');
-            }
+            if (isLiked) { btnEl.classList.remove('text-[#ff3b30]'); btnEl.classList.add('hover:text-white'); if (iconEl) iconEl.classList.remove('fill-current'); labelEl.innerText = count - 1 > 0 ? count - 1 : ''; }
+            else { btnEl.classList.add('text-[#ff3b30]'); btnEl.classList.remove('hover:text-white'); if (iconEl) iconEl.classList.add('fill-current'); labelEl.innerText = count + 1; }
+            const updateLocalState = (commentsArray) => { if (commentsArray) { const cIdx = commentsArray.findIndex(c => c.id === commentId); if (cIdx > -1) { if (!commentsArray[cIdx].marketplace_comment_likes) commentsArray[cIdx].marketplace_comment_likes = []; if (isLiked) commentsArray[cIdx].marketplace_comment_likes = commentsArray[cIdx].marketplace_comment_likes.filter(l => l.user_id !== currentUser.id); else commentsArray[cIdx].marketplace_comment_likes.push({ user_id: currentUser.id }); } } };
+            if (isInline && window.inlineCommentsCache[postId]) updateLocalState(window.inlineCommentsCache[postId]); if (!isInline && window.currentPostComments) updateLocalState(window.currentPostComments);
+            try { const result = isLiked ? await supabaseInstance.from('marketplace_comment_likes').delete().match({ comment_id: commentId, user_id: currentUser.id }) : await supabaseInstance.from('marketplace_comment_likes').insert([{ comment_id: commentId, user_id: currentUser.id }]); if (result.error) throw result.error; } catch (e) { updateLocalState(isInline ? window.inlineCommentsCache[postId] : window.currentPostComments); showErrorToast('Failed to update reaction.'); }
         }
 
         async function postComment(postId, isModal = false) {
@@ -4563,13 +4534,8 @@
             }
             const post = allCommunityPosts.find(p => p.id === postId);
             if (post && post.marketplace_comments && post.marketplace_comments[0].count > 0) { post.marketplace_comments[0].count--; const l1 = document.getElementById(`comment-count-label-${postId}`); const l2 = document.getElementById(`modal-comment-count-label-${postId}`); if (l1) l1.innerText = post.marketplace_comments[0].count; if (l2) l2.innerText = post.marketplace_comments[0].count; }
-            try {
-                const { error } = await supabaseInstance.from('marketplace_comments').delete().eq('id', commentId).eq('user_id', currentUser.id);
-                if (error) throw error;
-                showToast('Comment deleted.');
-            }
-            catch (e) {
-                showErrorToast('Failed to delete comment.'); 
+            try { const result = await supabaseInstance.from('marketplace_comments').delete().eq('id', commentId).eq('user_id', currentUser.id); if (result.error) throw result.error; } 
+            catch (e) { 
                 if (!isInline && window.currentPostComments) { window.currentPostComments = backup; document.getElementById(`modal-comments-tree-${postId}`).innerHTML = renderCommentTree(window.currentPostComments, postId, false); if (typeof lucide !== 'undefined') lucide.createIcons(); } 
                 else if (isInline && window.inlineCommentsCache[postId]) { window.inlineCommentsCache[postId] = backup; const treeContainer = document.getElementById(`inline-comments-tree-${postId}`); if(treeContainer) { treeContainer.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
             }
