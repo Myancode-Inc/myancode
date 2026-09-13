@@ -3569,19 +3569,35 @@
         async function loadCommentsForModalSilently(postId) {
             if (!supabaseInstance) return;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); 
+                if (error) return;
+                
+                const commentIds = data.map(c => c.id);
+                if (commentIds.length > 0) {
+                    const { data: likes } = await supabaseInstance.from('marketplace_comment_likes').select('comment_id, user_id').in('comment_id', commentIds);
+                    if (likes) data.forEach(c => { c.marketplace_comment_likes = likes.filter(l => l.comment_id === c.id); });
+                }
+
                 window.currentPostComments = data; const treeContainer = document.getElementById(`modal-comments-tree-${postId}`);
                 if (treeContainer) { if (data.length === 0) treeContainer.innerHTML = `<p class="text-sm text-gray-500 text-center py-10">No comments yet.</p>`; else { treeContainer.innerHTML = renderCommentTree(window.currentPostComments, postId); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
-            } catch (e) { }
+            } catch (e) { console.error(e); }
         }
         
         async function loadCommentsForFeedSilently(postId) {
             if (!supabaseInstance) return;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) return;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); 
+                if (error) return;
+
+                const commentIds = data.map(c => c.id);
+                if (commentIds.length > 0) {
+                    const { data: likes } = await supabaseInstance.from('marketplace_comment_likes').select('comment_id, user_id').in('comment_id', commentIds);
+                    if (likes) data.forEach(c => { c.marketplace_comment_likes = likes.filter(l => l.comment_id === c.id); });
+                }
+
                 window.inlineCommentsCache[postId] = data; const treeContainer = document.getElementById(`inline-comments-tree-${postId}`);
                 if (treeContainer) { if (data.length === 0) treeContainer.innerHTML = `<p class="text-xs text-gray-500 text-center py-2">No comments yet.</p>`; else { treeContainer.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons(); } }
-            } catch (e) { }
+            } catch (e) { console.error(e); }
         }
 
         function renderInitialSkeletons() {
@@ -3819,13 +3835,15 @@
                 reader.onload = event => {
                     const img = new Image(); img.src = event.target.result;
                     img.onload = () => {
-                        const canvas = document.createElement('canvas'); const MAX = 2560; let w = img.width; let h = img.height;
+                        const canvas = document.createElement('canvas'); 
+                        const MAX = 1280;
+                        let w = img.width; let h = img.height;
                         if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
                         canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d'); 
                         ctx.imageSmoothingEnabled = true;
                         ctx.imageSmoothingQuality = 'high';
                         ctx.drawImage(img, 0, 0, w, h);
-                        resolve(canvas.toDataURL('image/jpeg', 0.98).split(',')[1]);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]); 
                     }; img.onerror = error => reject(error);
                 }; reader.onerror = error => reject(error);
             });
@@ -3837,8 +3855,23 @@
                 try {
                     const base64Content = await compressImage(selectedImages[i]);
                     const { data, error } = await supabaseInstance.functions.invoke('upload-image', { body: { imageBase64: base64Content, extension: 'jpg', provider: 'imagekit' } });
-                    if (error || (data && data.error)) throw new Error("Upload failed."); if (data && data.url) uploadedUrls.push(data.url);
-                } catch (err) { throw err; }
+                    
+                    if (error) { console.error("Edge function error:", error); throw new Error("Upload failed."); }
+                    if (data && data.error) { console.error("API error:", data.error); throw new Error("Upload failed."); }
+                    
+                    let url = '';
+                    if (typeof data === 'string') url = data;
+                    else if (data && data.url) url = data.url;
+                    else if (data && data.imageUrl) url = data.imageUrl;
+                    else if (data && data.image_url) url = data.image_url;
+                    else if (data && data.result && data.result.url) url = data.result.url;
+                    
+                    if (url) uploadedUrls.push(url);
+                    else throw new Error("No URL returned from server.");
+                } catch (err) { 
+                    console.error("Upload process error:", err);
+                    throw err; 
+                }
             } return uploadedUrls;
         }
 
@@ -4417,11 +4450,19 @@
             const treeEl = document.getElementById(`inline-comments-tree-${postId}`);
             if (!silent) treeEl.innerHTML = `<div class="py-4 text-center"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-gray-500 mx-auto"></i></div>`;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); 
+                if (error) throw error;
+                
+                const commentIds = data.map(c => c.id);
+                if (commentIds.length > 0) {
+                    const { data: likes } = await supabaseInstance.from('marketplace_comment_likes').select('comment_id, user_id').in('comment_id', commentIds);
+                    if (likes) data.forEach(c => { c.marketplace_comment_likes = likes.filter(l => l.comment_id === c.id); });
+                }
+
                 window.inlineCommentsCache[postId] = data;
                 if (data.length === 0) { treeEl.innerHTML = `<p class="text-xs text-gray-500 text-center py-2 uppercase font-bold tracking-widest">No comments yet.</p>`; return; }
                 treeEl.innerHTML = renderCommentTree(window.inlineCommentsCache[postId], postId, true); if (typeof lucide !== 'undefined') lucide.createIcons();
-            } catch (e) { treeEl.innerHTML = `<p class="text-xs text-red-400 text-center">Failed to load comments.</p>`; }
+            } catch (e) { console.error(e); treeEl.innerHTML = `<p class="text-xs text-red-400 text-center">Failed to load comments.</p>`; }
         }
 
         function showMoreReplies(postId, parentId, isInline = false) { 
@@ -4434,10 +4475,19 @@
         async function loadCommentsForModal(postId) {
             const tree = document.getElementById(`modal-comments-tree-${postId}`); tree.innerHTML = `<div class="py-10 text-center"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-gray-500 mx-auto"></i></div>`;
             try {
-                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*, marketplace_comment_likes(user_id)').eq('post_id', postId).order('created_at', { ascending: true }); if (error) throw error; window.currentPostComments = data;
+                const { data, error } = await supabaseInstance.from('marketplace_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true }); 
+                if (error) throw error; 
+                
+                const commentIds = data.map(c => c.id);
+                if (commentIds.length > 0) {
+                    const { data: likes } = await supabaseInstance.from('marketplace_comment_likes').select('comment_id, user_id').in('comment_id', commentIds);
+                    if (likes) data.forEach(c => { c.marketplace_comment_likes = likes.filter(l => l.comment_id === c.id); });
+                }
+
+                window.currentPostComments = data;
                 if (data.length === 0) { tree.innerHTML = `<p class="text-xs text-gray-500 text-center py-10 uppercase font-bold tracking-widest">No comments yet.</p>`; return; }
                 tree.innerHTML = renderCommentTree(window.currentPostComments, postId, false); if (typeof lucide !== 'undefined') lucide.createIcons();
-            } catch (e) { tree.innerHTML = `<p class="text-sm text-red-400 text-center py-10">Failed to load comments.</p>`; }
+            } catch (e) { console.error(e); tree.innerHTML = `<p class="text-sm text-red-400 text-center py-10">Failed to load comments.</p>`; }
         }
 
         function renderCommentTree(allComments, postId, isInline = false) {
