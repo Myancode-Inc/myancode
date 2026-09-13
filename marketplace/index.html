@@ -1813,11 +1813,7 @@
         let currentUserCart = []; 
         
         if (window.supabase) {
-            supabaseInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                realtime: {
-                    url: 'wss://dnretdraqjwdiwxccmpd.supabase.co/realtime/v1'
-                }
-            });
+            supabaseInstance = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
         
         let selectedImages = []; let existingImagesForEdit = []; let allCommunityPosts = []; let currentFilter = 'all';
@@ -3526,34 +3522,30 @@
             return date.toLocaleDateString(currentLang === 'en' ? 'en-US' : 'my-MM', { month: 'short', day: 'numeric' });
         }
 
-        let realtimeChannel = null;
+        let pollingInterval = null;
         
         function initRealtime() {
             if (!supabaseInstance) return;
             
-            if (realtimeChannel) return; 
+            if (pollingInterval) clearInterval(pollingInterval);
             
-            realtimeChannel = supabaseInstance.channel('public_marketplace');
-            
-            realtimeChannel
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_posts' }, payload => { fetchPostsSilently(); })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_likes' }, payload => { fetchPostsSilently(); })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_saves' }, payload => { fetchPostsSilently(); })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_comments' }, payload => {
-                    fetchPostsSilently();
-                    const modal = document.getElementById('postDetailModal');
-                    if (modal && !modal.classList.contains('hidden')) document.querySelectorAll('[id^="modal-comments-tree-"]').forEach(node => { loadCommentsForModalSilently(node.id.replace('modal-comments-tree-', '')); });
-                    document.querySelectorAll('[id^="comments-inline-"]').forEach(node => { if (!node.classList.contains('hidden')) { const postId = node.id.replace('comments-inline-', ''); loadCommentsForFeedSilently(postId); } });
-                })
-                .subscribe(async (status) => {
-                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-                        console.warn('Realtime WebSockets are blocked by your proxy. Live updates disabled to prevent console spam.');
-                        if (supabaseInstance) {
-                            await supabaseInstance.removeAllChannels(); 
-                            realtimeChannel = null;
-                        }
-                    }
+            pollingInterval = setInterval(() => {
+                fetchPostsSilently();
+                
+                const modal = document.getElementById('postDetailModal');
+                if (modal && !modal.classList.contains('hidden')) {
+                    document.querySelectorAll('[id^="modal-comments-tree-"]').forEach(node => { 
+                        loadCommentsForModalSilently(node.id.replace('modal-comments-tree-', '')); 
+                    });
+                }
+                
+                document.querySelectorAll('[id^="comments-inline-"]').forEach(node => { 
+                    if (!node.classList.contains('hidden')) { 
+                        const postId = node.id.replace('comments-inline-', ''); 
+                        loadCommentsForFeedSilently(postId); 
+                    } 
                 });
+            }, 30000);
         }
 
         async function fetchPostsSilently() {
