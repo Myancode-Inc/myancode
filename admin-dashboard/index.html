@@ -2848,36 +2848,23 @@
             lucide.createIcons();
 
             try {
-                const { data: sessionData, error: sessionError } = await supabaseInstance.auth.getSession();
-                if (sessionError || !sessionData.session) throw new Error("Authentication failed. Session missing.");
-                
-                const token = sessionData.session.access_token;
-
-                const response = await fetch('/api/supabase/functions/send-newsletter', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        subject: subject,
-                        htmlContent: htmlContent
-                    })
+                const { data, error } = await supabaseInstance.functions.invoke('send-newsletter', {
+                    body: { subject: subject, htmlContent: htmlContent }
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Broadcast failed (${response.status}): ${errorText}`);
+                if (error) {
+                    console.error("Newsletter Edge Function Error:", error);
+                    throw new Error(error.message || "Edge function failed to execute");
+                }
+                if (data && data.error) {
+                    console.error("Newsletter API Error:", data.error);
+                    throw new Error(data.error || "API returned an error");
                 }
 
                 showToast("Broadcast emails successfully routed to Resend.");
                 closeSendMailModal();
             } catch (err) {
                 let errorMsg = err.message;
-                if (errorMsg === 'Failed to fetch') {
-                    errorMsg = "Network error: The send-newsletter edge function might not be deployed or CORS is failing.";
-                }
                 showErrorToast(errorMsg);
                 console.error("Mailing Error:", err);
             } finally {
