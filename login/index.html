@@ -1683,7 +1683,7 @@
 
         const initialURLHash = window.location.hash || '';
         const initialURLSearch = window.location.search || '';
-        const isUrlRecoveryFlow = initialURLHash.includes('type=recovery') || initialURLSearch.includes('type=recovery');
+        const isUrlRecoveryFlow = initialURLHash.includes('type=recovery') || initialURLSearch.includes('type=recovery') || initialURLSearch.includes('code=');
 
         const globalLoader = document.getElementById('globalLoader');
         const loaderText = document.getElementById('loaderText');
