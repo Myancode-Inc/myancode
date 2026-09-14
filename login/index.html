@@ -1746,7 +1746,8 @@
                 try {
                     const searchStr = window.location.search || '';
                     const hashStr = window.location.hash || '';
-                    const isRecovery = searchStr.includes('type=recovery') || hashStr.includes('type=recovery') || event === 'PASSWORD_RECOVERY';
+                    
+                    const isRecovery = searchStr.includes('type=recovery') || hashStr.includes('type=recovery') || event === 'PASSWORD_RECOVERY' || isUrlRecoveryFlow;
 
                     if (session && session.user) {
                             let profileRole = session.user.app_metadata?.role || session.user.user_metadata?.role || 'client';
