@@ -1,2 +1,3 @@
 *.apk
 /page-backup/
+.DS_Store
