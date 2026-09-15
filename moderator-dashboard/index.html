@@ -189,7 +189,7 @@
     <main class="flex-1 flex flex-col h-screen overflow-hidden bg-[#050505] relative w-full">
         <div class="absolute inset-0 bg-grid-dark pointer-events-none z-0 opacity-60"></div>
         
-        <header class="glass-header h-20 flex items-center justify-between px-6 sm:px-12 relative z-10 flex-shrink-0">
+        <header class="glass-header h-20 flex items-center justify-between px-6 sm:px-12 relative z-[9999] flex-shrink-0">
             <div class="flex items-center gap-5">
                 <button onclick="toggleMobileMenu()" class="text-gray-400 hover:text-white transition-colors lg:hidden"><i data-lucide="menu" class="w-6 h-6"></i></button>
                 <button onclick="toggleSidebarDesktop()" class="text-gray-400 hover:text-white transition-colors hidden lg:block"><i data-lucide="align-left" class="w-6 h-6"></i></button>
@@ -3082,25 +3082,12 @@
 
         function getBase64Original(file) {
             return new Promise((resolve, reject) => {
-                const reader = new FileReader(); reader.readAsDataURL(file);
-                reader.onload = event => {
-                    const img = new Image(); img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas'); 
-                        const MAX = 800;
-                        let w = img.width; let h = img.height;
-                        if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
-                        canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d'); 
-                        
-                        ctx.fillStyle = '#ffffff'; 
-                        ctx.fillRect(0, 0, w, h);
-                        
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(img, 0, 0, w, h);
-                        resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]); 
-                    }; img.onerror = error => reject(error);
-                }; reader.onerror = error => reject(error);
+                const reader = new FileReader(); 
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    resolve(reader.result.split(',')[1]);
+                };
+                reader.onerror = error => reject(error);
             });
         }
 
