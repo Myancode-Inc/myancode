@@ -360,7 +360,7 @@
     <div id="wishlistOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] drawer-overlay" onclick="toggleWishlistDrawer()"></div>
     <div id="wishlistDrawer" class="fixed inset-y-0 right-0 w-full sm:w-[90vw] sm:max-w-[420px] bg-[#0a0a0a] text-white z-[80] drawer-right flex flex-col shadow-2xl border-l border-white/10">
         <div class="px-6 py-6 flex items-center justify-between border-b border-white/10 bg-white/5">
-            <h3 class="font-bold text-lg font-display tracking-tight flex items-center gap-2"><i data-lucide="shopping-bag" class="h-5 w-5 text-white"></i> <span data-i18n="wishlistTitle">Your Bag</span></h3>
+            <h3 class="font-bold text-lg font-display tracking-tight flex items-center gap-2"><i data-lucide="shopping-bag" class="h-5 w-5 text-white"></i> <span data-i18n="wishlistTitle">Saved Items</span></h3>
             <button onclick="toggleWishlistDrawer()" class="p-2 bg-[#111] rounded-full border border-white/10 transition-all text-gray-400 hover:text-white hover:bg-white/10"><i data-lucide="x" class="h-4 w-4"></i></button>
         </div>
         <div id="wishlistItemsContainer" class="flex-1 overflow-y-auto no-scrollbar p-6 flex flex-col gap-4"></div>
@@ -1521,28 +1521,154 @@
             }
         }
 
-        function renderWishlistItems() {
-            const container = document.getElementById('wishlistItemsContainer'); const totalDisplay = document.getElementById('wishlistTotal');
+        async function renderWishlistItems() {
+            const container = document.getElementById('wishlistItemsContainer');
+            const footer = document.getElementById('wishlistFooter');
             if (!container) return;
-            let total = 0;
+            
             if (currentUserCart.length === 0) {
-                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><i data-lucide="shopping-bag" class="h-12 w-12 mb-4 opacity-50"></i><p class="text-sm font-medium tracking-wide">${dict[currentLang].emptyWishlist}</p></div>`;
-                if (totalDisplay) totalDisplay.textContent = `0 MMK`; if(typeof lucide !== 'undefined') lucide.createIcons(); return;
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><i data-lucide="bookmark" class="h-12 w-12 mb-4 opacity-30"></i><p class="text-sm font-medium tracking-wide">${dict[currentLang].emptyWishlist}</p></div>`;
+                if(footer) footer.classList.add('hidden');
+                if(typeof lucide !== 'undefined') lucide.createIcons(); 
+                return;
             }
-            container.innerHTML = currentUserCart.map(item => {
-                total += item.price;
+            
+            if(footer) footer.classList.remove('hidden');
+
+            container.innerHTML = `<div class="flex justify-center py-10"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-gray-500"></i></div>`;
+            if(typeof lucide !== 'undefined') lucide.createIcons();
+
+            const itemIds = currentUserCart.map(i => i.id);
+            let templates = [];
+            let services = [];
+            
+            if (supabaseInstance) {
+                try {
+                    const [tplRes, srvRes] = await Promise.all([
+                        supabaseInstance.from('website_templates').select('id, slug').in('id', itemIds),
+                        supabaseInstance.from('website_services').select('id, slug').in('id', itemIds)
+                    ]);
+                    templates = tplRes.data || [];
+                    services = srvRes.data || [];
+                } catch (e) {
+                    console.error("Failed to fetch saved item slugs", e);
+                }
+            }
+
+            const html = currentUserCart.map(item => {
+                const priceText = item.price === 0 ? 'Custom Price' : `${item.price.toLocaleString()} MMK`;
+                
+                let itemUrl = '#';
+                let badge = '';
+                
+                const tplMatch = templates.find(t => t.id === item.id);
+                const srvMatch = services.find(s => s.id === item.id);
+                
+                if (tplMatch && tplMatch.slug) {
+                    itemUrl = `../template-detail/?slug=${tplMatch.slug}`;
+                    badge = 'Template';
+                } else if (srvMatch && srvMatch.slug) {
+                    itemUrl = `../service-detail/?slug=${srvMatch.slug}`;
+                    badge = 'Service';
+                }
+
                 return `
-                <div class="flex justify-between items-center p-4 bg-[#111] border border-white/10 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div>
-                        <h4 class="font-bold text-sm mb-1 truncate max-w-[150px] text-white">${item.name}</h4>
-                        <span class="text-xs font-bold text-gray-400">${item.price.toLocaleString()} MMK</span>
+                <div class="flex flex-col p-5 bg-[#111] border border-white/10 rounded-2xl shadow-sm hover:border-myancode-accent/30 transition-all gap-4 group">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1 min-w-0 pr-3">
+                            <h4 class="font-bold text-[15px] mb-1 truncate text-white group-hover:text-myancode-accent transition-colors">${item.name}</h4>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-xs font-mono font-medium text-gray-400">${priceText}</span>
+                                ${badge ? `<span class="text-[9px] uppercase tracking-widest bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-500">${badge}</span>` : ''}
+                            </div>
+                        </div>
+                        <button onclick="toggleWishlist('${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.price})" class="p-2 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-xl transition-all" title="Remove">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
                     </div>
-                    <button onclick="toggleWishlist('${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.price})" class="text-xs font-bold text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg px-3 py-1.5 transition-colors">${dict[currentLang].removeFromWishlist}</button>
+                    <a href="${itemUrl}" class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-widest text-center rounded-xl transition-colors border border-white/5 flex items-center justify-center gap-2">
+                        View Details <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </a>
                 </div>
             `}).join('');
-            if (totalDisplay) totalDisplay.textContent = `${total.toLocaleString()} MMK`;
+            
+            container.innerHTML = html;
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
+
+        function openRemoveAllConfirm() {
+            const modal = document.getElementById('removeAllConfirmModal');
+            const content = modal.querySelector('div');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }
+
+        function closeRemoveAllConfirm() {
+            const modal = document.getElementById('removeAllConfirmModal');
+            const content = modal.querySelector('div');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        async function confirmRemoveAll() {
+            currentUserCart = [];
+            await syncWishlistToSupabase();
+            updateWishlistCount();
+            renderWishlistItems();
+            closeRemoveAllConfirm();
+            showToast(currentLang === 'en' ? "All saved items removed successfully." : "သိမ်းဆည်းထားသော အရာအားလုံးကို ဖယ်ရှားပြီးပါပြီ။");
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const removeModal = document.getElementById('removeAllConfirmModal');
+            if (e.key === 'Escape' && removeModal && !removeModal.classList.contains('hidden')) {
+                closeRemoveAllConfirm();
+            }
+        });
+
+        function openRemoveAllConfirm() {
+            const modal = document.getElementById('removeAllConfirmModal');
+            const content = modal.querySelector('div');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            void modal.offsetWidth;
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }
+
+        function closeRemoveAllConfirm() {
+            const modal = document.getElementById('removeAllConfirmModal');
+            const content = modal.querySelector('div');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        async function confirmRemoveAll() {
+            currentUserCart = [];
+            await syncWishlistToSupabase();
+            updateWishlistCount();
+            renderWishlistItems();
+            closeRemoveAllConfirm();
+            showToast(currentLang === 'en' ? "All saved items removed successfully." : "သိမ်းဆည်းထားသော အရာအားလုံးကို ဖယ်ရှားပြီးပါပြီ။");
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const removeModal = document.getElementById('removeAllConfirmModal');
+            if (e.key === 'Escape' && removeModal && !removeModal.classList.contains('hidden')) {
+                closeRemoveAllConfirm();
+            }
+        });
 
         function toggleLangDropdown(e) {
             e.stopPropagation(); document.getElementById('langDropdown').classList.toggle('dropdown-hidden');
