@@ -438,8 +438,8 @@
                     <div class="inline-flex items-center justify-center w-14 h-14 bg-[#111] border border-white/10 rounded-none mb-8 relative z-10 text-white group-hover:bg-myancode-accent group-hover:border-myancode-accent transition-colors duration-300">
                         <i data-lucide="calendar-plus" class="w-6 h-6"></i>
                     </div>
-                    <h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight text-white mb-4 relative z-10" data-i18n="optConsultTitle">Request an Executive Consultation</h3>
-                    <p class="text-sm font-medium text-gray-400 mb-8 relative z-10 leading-relaxed" data-i18n="optConsultDesc">Allow our specialized representatives to contact you at your preferred convenience for a detailed discussion regarding your infrastructure or business requirements.</p>
+                    <h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight text-white mb-4 relative z-10" data-i18n="optConsultTitle">Request a Meeting</h3>
+                    <p class="text-sm font-medium text-gray-400 mb-8 relative z-10 leading-relaxed" data-i18n="optConsultDesc">Choose your preferred date and time. Our team will confirm the meeting after reviewing your request.</p>
                     <div class="mt-auto flex items-center text-xs font-bold tracking-widest font-mono uppercase text-myancode-accent group-hover:text-white transition-colors">
                         <span data-i18n="btnBookAppt">Schedule Appointment</span> <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
                     </div>
@@ -453,10 +453,10 @@
                     <div class="inline-flex items-center justify-center w-14 h-14 bg-[#111] border border-white/10 rounded-none mb-8 relative z-10 text-white group-hover:bg-white group-hover:text-black transition-colors duration-300">
                         <i data-lucide="contact" class="w-6 h-6"></i>
                     </div>
-                    <h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight text-white mb-4 relative z-10" data-i18n="optDirectTitle">Access Direct Directories</h3>
+                    <h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight text-white mb-4 relative z-10" data-i18n="optDirectTitle">Contact Our Team</h3>
                     <p class="text-sm font-medium text-gray-400 mb-8 relative z-10 leading-relaxed" data-i18n="optDirectDesc">Reach out to our specific departments, direct lines, or executive board immediately. Select this option to view our comprehensive contact catalog.</p>
                     <div class="mt-auto flex items-center text-xs font-bold tracking-widest font-mono uppercase text-gray-400 group-hover:text-white transition-colors">
-                        <span data-i18n="btnViewDirs">View Directories</span> <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
+                        <span data-i18n="btnViewDirs">View Contact Details</span> <i data-lucide="arrow-right" class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"></i>
                     </div>
                 </button>
             </div>
@@ -471,14 +471,14 @@
 
                 <div class="bg-[#0a0a0a] border border-white/10 rounded-none p-8 sm:p-12 relative overflow-hidden shadow-[0_15px_40px_-10px_rgba(0,0,0,0.9)]">
                     <div class="mb-10 border-b border-white/10 pb-8">
-                        <h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight text-white mb-3 uppercase" data-i18n="formApptTitle">Consultation Request Form</h3>
+                        <h3 class="text-2xl sm:text-3xl font-display font-bold tracking-tight text-white mb-3 uppercase" data-i18n="formApptTitle">Meeting Request Form</h3>
                         <p class="text-sm font-medium text-gray-400 leading-relaxed" data-i18n="formApptDesc">Please provide your comprehensive details. Appointments must be scheduled at least 12 hours in advance.</p>
                     </div>
 
                     <form id="appointmentForm" onsubmit="handleAppointmentSubmit(event)" class="space-y-6">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
-                                <label class="block text-[10px] font-bold font-mono text-gray-500 uppercase tracking-widest mb-2" data-i18n="lblFullName">Full Legal Name</label>
+                                <label class="block text-[10px] font-bold font-mono text-gray-500 uppercase tracking-widest mb-2" data-i18n="lblFullName">Full Name</label>
                                 <input type="text" id="apptName" required autocomplete="name" class="w-full px-5 py-3.5 bg-[#050505] border border-white/10 rounded-none focus:outline-none focus:border-myancode-accent transition-all text-sm font-medium text-white placeholder-gray-600">
                             </div>
                             <div>
@@ -1129,7 +1129,7 @@
                 navAbout: "About", navStudio: "Packages", navWebsites: "Templates", navServices: "Services", navSupport: "Support", navMaintenance: "Maintenance",
                 navCommunity: "Community", navDevelopers: "Developers", navPricing: "Pricing", navCaseStudies: "Projects", navContact: "Contact",
                 langSelect: "Language", langToggle: "Switch Language", searchPlaceholder: "Search MyanCode...",
-                cartTitle: "Your Bag", emptyWishlist: "Your bag is empty.", removeFromWishlist: "Remove", btnCart: "Cart", wlTotal: "Est. Total", btnCheckout: "Proceed to Checkout",
+                cartTitle: "Saved Items", emptyWishlist: "No saved items yet.", removeFromWishlist: "Remove", btnCart: "Saved", wlTotal: "Est. Total", btnCheckout: "Proceed to Checkout",
                 quickLinks: "Quick Links", searchResults: "Results", searchHint: "Type to discover our products and services...",
                 btnHireUs: "Book Now", btnHireUsLong: "Book Now",
                 tradeInTitle: "Web Development", newArrivals: "Premium Templates", bulkTitle: "SEO Optimization",
@@ -1153,18 +1153,18 @@
                 contactDesc: "Whether you have a technical question, a business inquiry, or just want to explore our enterprise solutions, our team is ready to assist you round the clock.",
                 
                 // Contact Choice Keys
-                optConsultTitle: "Request an Executive Consultation",
-                optConsultDesc: "Allow our specialized representatives to contact you at your preferred convenience for a detailed discussion regarding your infrastructure or business requirements.",
+                optConsultTitle: "Request a Meeting",
+                optConsultDesc: "Choose your preferred date and time. Our team will confirm the meeting after reviewing your request.",
                 btnBookAppt: "Schedule Appointment",
-                optDirectTitle: "Access Direct Directories",
+                optDirectTitle: "Contact Our Team",
                 optDirectDesc: "Reach out to our specific departments, direct lines, or executive board immediately. Select this option to view our comprehensive contact catalog.",
-                btnViewDirs: "View Directories",
+                btnViewDirs: "View Contact Details",
                 btnBackOptions: "Return to Options",
 
                 // Appointment Form Keys
-                formApptTitle: "Consultation Request Form",
+                formApptTitle: "Meeting Request Form",
                 formApptDesc: "Please provide your comprehensive details. Appointments must be scheduled at least 12 hours in advance.",
-                lblFullName: "Full Legal Name",
+                lblFullName: "Full Name",
                 lblPhone: "Contact Number",
                 lblAddress: "Meeting Location / Address (Optional)",
                 lblSocials: "Social Chat Links (Optional)",

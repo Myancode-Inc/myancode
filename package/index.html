@@ -486,16 +486,10 @@
     <div id="wishlistOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] drawer-overlay" onclick="toggleWishlistDrawer()"></div>
     <div id="wishlistDrawer" class="fixed inset-y-0 right-0 w-full sm:w-[90vw] sm:max-w-[420px] bg-[#0a0a0a] text-white z-[80] drawer-right flex flex-col shadow-2xl border-l border-white/10">
         <div class="px-6 py-6 flex items-center justify-between border-b border-white/10 bg-[#0f0f0f]">
-            <h3 class="font-bold text-lg font-display tracking-tight flex items-center gap-2"><i data-lucide="shopping-bag" class="h-5 w-5 text-white"></i> <span data-i18n="wishlistTitle">Your Bag</span></h3>
+            <h3 class="font-bold text-lg font-display tracking-tight flex items-center gap-2"><i data-lucide="bookmark" class="h-5 w-5 text-myancode-accent"></i> <span data-i18n="wishlistTitle">Saved Items</span></h3>
             <button onclick="toggleWishlistDrawer()" class="p-2 bg-[#111] rounded-full border border-white/10 transition-all text-gray-400 hover:text-white hover:bg-white/10"><i data-lucide="x" class="h-4 w-4"></i></button>
         </div>
-        <div id="wishlistItemsContainer" class="flex-1 overflow-y-auto no-scrollbar p-6 flex flex-col gap-4 bg-[#0a0a0a]"></div>
-        <div class="p-6 border-t border-white/10 bg-[#0f0f0f]">
-            <div class="flex justify-between items-center mb-6"><span class="text-[11px] font-bold font-mono text-gray-400 uppercase tracking-widest" data-i18n="wlTotal">Est. Total</span><span class="text-xl font-bold font-display text-white" id="wishlistTotal">0 MMK</span></div>
-            <button onclick="proceedToCheckout()" class="w-full bg-white text-black py-4 rounded-xl text-sm font-bold tracking-wide hover:bg-gray-200 transition flex items-center justify-center gap-2 btn-hover-effect">
-                <span data-i18n="btnCart">Proceed to Checkout</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </button>
-        </div>
+        <div id="wishlistItemsContainer" class="flex-1 overflow-y-auto custom-scroll p-6 flex flex-col gap-4 bg-[#0a0a0a]"></div>
     </div>
 
     
