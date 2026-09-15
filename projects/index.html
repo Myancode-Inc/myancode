@@ -271,8 +271,8 @@
                     </button>
 
                     <button onclick="toggleWishlistDrawer()" class="relative transition-colors duration-300 hover:text-myancode-accent group nav-icon text-white">
-                        <i data-lucide="shopping-bag" class="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:scale-110"></i>
-                        <span id="cart-count" class="absolute -top-1.5 -right-2 bg-white text-black text-[9px] font-bold font-mono h-4 w-4 rounded-full flex items-center justify-center opacity-0 transition-opacity">0</span>
+                        <i data-lucide="bookmark" class="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:scale-110"></i>
+                        <span id="cart-count" class="absolute -top-1.5 -right-2 bg-myancode-accent text-white text-[9px] font-bold font-mono h-4 w-4 rounded-full flex items-center justify-center opacity-0 transition-opacity">0</span>
                     </button>
 
                     <div class="relative hidden sm:block" id="langContainer">
@@ -393,16 +393,10 @@
     <div id="wishlistOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] drawer-overlay" onclick="toggleWishlistDrawer()"></div>
     <div id="wishlistDrawer" class="fixed inset-y-0 right-0 w-full sm:w-[90vw] sm:max-w-[420px] bg-[#0a0a0a] text-white z-[80] drawer-right flex flex-col shadow-2xl border-l border-white/10">
         <div class="px-6 py-6 flex items-center justify-between border-b border-white/10 bg-[#0f0f0f]">
-            <h3 class="font-bold text-lg font-display tracking-tight flex items-center gap-2"><i data-lucide="shopping-bag" class="h-5 w-5 text-white"></i> <span data-i18n="wishlistTitle">Your Bag</span></h3>
+            <h3 class="font-bold text-lg font-display tracking-tight flex items-center gap-2"><i data-lucide="bookmark" class="h-5 w-5 text-myancode-accent"></i> <span data-i18n="wishlistTitle">Saved Items</span></h3>
             <button onclick="toggleWishlistDrawer()" class="p-2 bg-[#111] rounded-full border border-white/10 transition-all text-gray-400 hover:text-white hover:bg-white/10"><i data-lucide="x" class="h-4 w-4"></i></button>
         </div>
-        <div id="wishlistItemsContainer" class="flex-1 overflow-y-auto no-scrollbar p-6 flex flex-col gap-4 bg-[#0a0a0a]"></div>
-        <div class="p-6 border-t border-white/10 bg-[#0f0f0f]">
-            <div class="flex justify-between items-center mb-6"><span class="text-[11px] font-bold font-mono text-gray-400 uppercase tracking-widest" data-i18n="wlTotal">Est. Total</span><span class="text-xl font-bold font-display text-white" id="wishlistTotal">0 MMK</span></div>
-            <button onclick="proceedToCheckout()" class="w-full bg-white text-black py-4 rounded-xl text-sm font-bold tracking-wide hover:bg-gray-200 transition flex items-center justify-center gap-2 btn-hover-effect">
-                <span data-i18n="btnCart">Proceed to Checkout</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </button>
-        </div>
+        <div id="wishlistItemsContainer" class="flex-1 overflow-y-auto custom-scroll p-6 flex flex-col gap-4 bg-[#0a0a0a]"></div>
     </div>
 
     
@@ -978,7 +972,7 @@
                 navAbout: "About", navStudio: "Packages", navWebsites: "Templates", navServices: "Services", navSupport: "Support", navMaintenance: "Maintenance",
                 navCommunity: "Community", navDevelopers: "Developers", navPricing: "Pricing", navCaseStudies: "Project", navContact: "Contact",
                 langSelect: "Language", langToggle: "Switch Language", searchPlaceholder: "Search MyanCode...",
-                cartTitle: "Your Bag", emptyWishlist: "Your bag is empty.", removeFromWishlist: "Remove", btnCart: "Cart", wlTotal: "Est. Total", btnCheckout: "Proceed to Checkout",
+                cartTitle: "Saved Items", emptyWishlist: "No saved items yet.", removeFromWishlist: "Remove", btnCart: "Saved", wlTotal: "Est. Total", btnCheckout: "Proceed to Checkout",
                 quickLinks: "Quick Links", searchResults: "Results", searchHint: "Type to discover our products and services...",
                 btnHireUs: "Book Now", btnHireUsLong: "Book Now", btnContactUs: "Contact Support",
                 ftCompanyTitle: "Company", ftAboutUs: "Read Our Story", ftContactUs: "Contact Us", ftUpdates: "Updates & News", ftCareers: "Careers",
@@ -994,7 +988,7 @@
                 navAbout: "ကျွန်ုပ်တို့အကြောင်း", navStudio: "စတူဒီယို", navWebsites: "ဝက်ဘ်ဆိုက်များ", navServices: "ဝန်ဆောင်မှုများ", navSupport: "အကူအညီ", navMaintenance: "ပြုပြင်ထိန်းသိမ်းရေး",
                 navCommunity: "ဈေးကွက်", navDevelopers: "Developers", navPricing: "ဈေးနှုန်းများ", navCaseStudies: "မှတ်တမ်းများ", navContact: "ဆက်သွယ်ရန်",
                 langSelect: "ဘာသာစကားရွေးချယ်ရန်", langToggle: "ဘာသာစကားပြောင်းရန်", searchPlaceholder: "MyanCode တွင် ရှာဖွေရန်...",
-                cartTitle: "မှာယူမည့်စာရင်း", emptyWishlist: "သင်စာရင်းလွတ်နေပါသည်။", removeFromWishlist: "ဖယ်ရှားမည်", btnCart: "မှာယူမည့်စာရင်း", wlTotal: "စုစုပေါင်း", btnCheckout: "ဝယ်ယူရန် ရှေ့ဆက်မည်",
+                cartTitle: "သိမ်းဆည်းထားသော အရာများ", emptyWishlist: "သိမ်းဆည်းထားသော အရာများ မရှိသေးပါ။", removeFromWishlist: "ဖယ်ရှားမည်", btnCart: "သိမ်းဆည်းမည်", wlTotal: "စုစုပေါင်း", btnCheckout: "ဝယ်ယူရန် ရှေ့ဆက်မည်",
                 quickLinks: "အမြန်လင့်ခ်များ", searchResults: "ရလဒ်များ", searchHint: "ကျွန်ုပ်တို့၏ ဝန်ဆောင်မှုများကို ရှာဖွေရန် ရိုက်ထည့်ပါ...",
                 btnHireUs: "အပ်နှံမည်", btnHireUsLong: "ယခုပင် အပ်နှံမည်", btnContactUs: "ဆက်သွယ်ရန်",
                 ftCompanyTitle: "ကုမ္ပဏီ", ftAboutUs: "ကျွန်ုပ်တို့အကြောင်း", ftContactUs: "ဆက်သွယ်ရန်", ftUpdates: "သတင်းနှင့် အသစ်များ", ftCareers: "အလုပ်အကိုင်များ",
@@ -1182,26 +1176,42 @@
         }
 
         function renderWishlistItems() {
-            const container = document.getElementById('wishlistItemsContainer'); const totalDisplay = document.getElementById('wishlistTotal');
+            const container = document.getElementById('wishlistItemsContainer');
             if (!container) return;
-            let total = 0;
+            
             if (currentUserCart.length === 0) {
-                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><i data-lucide="shopping-bag" class="h-12 w-12 mb-4 opacity-50"></i><p class="text-sm font-medium tracking-wide">${dict[currentLang].emptyWishlist}</p></div>`;
-                if (totalDisplay) totalDisplay.textContent = `0 MMK`; if(typeof lucide !== 'undefined') lucide.createIcons(); return;
+                container.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-500"><i data-lucide="bookmark" class="h-12 w-12 mb-4 opacity-30"></i><p class="text-sm font-medium tracking-wide">${dict[currentLang].emptyWishlist}</p></div>`;
+                if(typeof lucide !== 'undefined') lucide.createIcons(); 
+                return;
             }
+            
             container.innerHTML = currentUserCart.map(item => {
-                total += item.price;
-                const priceText = item.price === 0 ? 'Custom Framework' : `${item.price.toLocaleString()} MMK`;
+                const priceText = item.price === 0 ? 'Custom Price' : `${item.price.toLocaleString()} MMK`;
+
+                let itemUrl = `../template-detail/?product=${item.id}`;
+                if (item.id && String(item.id).startsWith('srv-')) {
+                    itemUrl = `../services/?id=${item.id}`;
+                } else if (item.url) {
+                    itemUrl = item.url;
+                }
+                
                 return `
-                <div class="flex justify-between items-center p-4 bg-[#111] border border-white/10 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div>
-                        <h4 class="font-bold text-sm mb-1 truncate max-w-[150px] text-white">${item.name}</h4>
-                        <span class="text-xs font-bold text-gray-400">${priceText}</span>
+                <div class="flex flex-col p-5 bg-[#111] border border-white/10 rounded-2xl shadow-sm hover:border-myancode-accent/30 transition-all gap-4 group">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1 min-w-0 pr-3">
+                            <h4 class="font-bold text-[15px] mb-1 truncate text-white group-hover:text-myancode-accent transition-colors">${item.name}</h4>
+                            <span class="text-xs font-mono font-medium text-gray-400">${priceText}</span>
+                        </div>
+                        <button onclick="toggleWishlist('${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.price})" class="p-2 text-gray-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-xl transition-all" title="Remove">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
                     </div>
-                    <button onclick="toggleWishlist('${item.id}', '${item.name.replace(/'/g, "\\'")}', ${item.price})" class="text-xs font-bold text-red-400 hover:text-red-300 bg-red-500/10 rounded-lg px-3 py-1.5 transition-colors">${dict[currentLang].removeFromWishlist}</button>
+                    <a href="${itemUrl}" class="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white text-xs font-bold uppercase tracking-widest text-center rounded-xl transition-colors border border-white/5 flex items-center justify-center gap-2">
+                        View Details <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </a>
                 </div>
             `}).join('');
-            if (totalDisplay) totalDisplay.textContent = total === 0 ? 'To Be Quoted' : `${total.toLocaleString()} MMK`;
+            
             if(typeof lucide !== 'undefined') lucide.createIcons();
         }
 
